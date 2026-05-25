@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from fastapi import APIRouter, Form
+from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import JSONResponse
 
 from app.ai.planner import create_action_plan
@@ -10,12 +10,15 @@ from app.ai.status import summarize_status
 from app.routes.incidents import create_postmortem
 from app.services.incident_service import incident_service
 from app.services.orchestrator import orchestrator
+from app.slack_security import verify_slack_request
 
 router = APIRouter(prefix="/slack", tags=["slack"])
 
 
 @router.post("/commands")
 async def slack_command(
+    request: Request,
+    _: None = Depends(verify_slack_request),
     text: str = Form(""),
     user_id: str = Form("demo-user"),
     channel_id: str = Form("demo-channel"),
@@ -56,7 +59,11 @@ async def slack_command(
 
 
 @router.post("/actions")
-async def slack_actions(payload: str = Form(...)) -> JSONResponse:
+async def slack_actions(
+    request: Request,
+    _: None = Depends(verify_slack_request),
+    payload: str = Form(...),
+) -> JSONResponse:
     data = json.loads(payload)
     action = data.get("actions", [{}])[0]
     plan_id = action.get("value")
